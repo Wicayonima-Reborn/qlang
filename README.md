@@ -1,268 +1,163 @@
 <div align="center">
 
-# 📐 QLang Compiler Engine
+# QLang
 
-**A lightweight, Rust-powered matrix & vector DSL compiler targeting C with bundled TinyCC.**
+A lightweight programming language for matrix and vector computation.
 
-[![Rust](https://img.shields.io/badge/rust-2021-orange.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey.svg?style=flat-square)](#)
-
-[Quick Start](#-quick-start) •
-[Architecture](#-architecture) •
-[Language Features](#-language-features) •
-[Contributing](#-contributing)
+[Quick Start](#quick-start) •
+[Architecture](#architecture) •
+[Language Features](#language-features) •
+[Contributing](#contributing)
 
 </div>
 
----
+## Overview
 
-## 💡 Overview
+QLang is a lightweight programming language designed for matrix and vector computation.
 
-**QLang** is a domain-specific language (DSL) and compiler engine designed for high-performance matrix and vector manipulation.
+QLang programs are compiled to C and then converted into native executables using a bundled TinyCC toolchain.
 
-The compiler performs **static type and shape checking** during compilation, then generates portable **C source code** that can be compiled and executed using a bundled TinyCC (`tcc`) toolchain.
+## Why QLang?
 
-The goal is to provide a concise, high-level syntax for numerical operations while keeping the generated runtime lightweight and portable.
+QLang is designed to keep numerical code concise while providing compile-time validation for matrix operations.
 
-## ✨ Key Features
+* Matrix and vector operations
+* Static type and shape checking
+* Two-dimensional matrix slicing
+* Matrix transposition
+* C code generation
+* Native executable output
+* Bundled TinyCC compiler
 
-- **Matrix & Vector Primitives** — Native syntax for defining and manipulating numerical data.
-- **2D Slicing** — Supports matrix slicing with `M[r1..r2, c1..c2]` syntax.
-- **Transpose Operations** — Built-in matrix transposition through `transpose(M)`.
-- **Static Shape Checking** — Matrix dimensions are validated during compilation to catch invalid operations early.
-- **Rust-Powered Compiler** — A modular compiler pipeline implemented in Rust.
-- **C Code Generation** — Validated QLang programs are translated into C.
-- **Bundled TinyCC** — Compiles generated C code without requiring a large external C toolchain.
-- **CLI Workflow** — Run QLang scripts directly or build standalone executables.
+## Quick Start
 
----
-
-## 🏗️ Architecture
-
-QLang is organized as a modular Rust workspace:
-
-| Crate / Module | Responsibility |
-| :--- | :--- |
-| `crates/ql_lexer` | Tokenizes QLang source code into a stream of tokens. |
-| `crates/ql_parser` | Parses tokens into an Abstract Syntax Tree (AST). |
-| `crates/ql_ast` | Defines AST structures, nodes, expressions, and operators. |
-| `crates/ql_checker` | Performs type inference and static matrix shape validation. |
-| `crates/ql_codegen` | Converts the validated AST into C source code. |
-| `src/main.rs` | Provides the main CLI entrypoint and commands such as `run` and `build`. |
-| `tcc/` | Bundled TinyCC toolchain used to compile generated C code. |
-
-### Compilation Pipeline
-
-```text
-QLang Source
-     │
-     ▼
-┌─────────────┐
-│   Lexer     │
-└──────┬──────┘
-       ▼
-┌─────────────┐
-│   Parser    │
-└──────┬──────┘
-       ▼
-┌─────────────┐
-│     AST     │
-└──────┬──────┘
-       ▼
-┌─────────────┐
-│   Checker   │
-│ Type + Shape│
-└──────┬──────┘
-       ▼
-┌─────────────┐
-│   Codegen   │
-│   QLang → C │
-└──────┬──────┘
-       ▼
-┌─────────────┐
-│    TinyCC   │
-└──────┬──────┘
-       ▼
-  Native Binary
-```
-
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- [Rust Toolchain](https://www.rust-lang.org/tools/install) with Rust 2021 edition
-- A local checkout of the repository
-- Bundled TinyCC available in `tcc/`
-
-### Run a QLang Script
-
-Execute a QLang source file directly:
-
-```bash
-cargo run -- run test.ql
-```
-
-### Build an Executable
-
-Compile a QLang source file into a standalone executable:
-
-```bash
-cargo run -- build test.ql -o test.exe
-```
-
-On Linux, use an appropriate executable name or output path:
-
-```bash
-cargo run -- build test.ql -o test
-```
-
----
-
-## 📝 Language Features
-
-### Matrix Literals
-
-Matrices can be declared using nested array syntax:
-
-```qlang
-let M = [
-    [1.0, 2.0, 3.0],
-    [4.0, 5.0, 6.0],
-    [7.0, 8.0, 9.0]
-];
-```
-
-### 2D Slicing
-
-Select a rectangular region from a matrix:
-
-```qlang
-let sub = M[0..2, 1..3];
-```
-
-### Transpose
-
-Transpose a matrix using the built-in `transpose` operation:
-
-```qlang
-let t = transpose(M);
-```
-
-### Printing
-
-Matrix values can be printed directly:
-
-```qlang
-print(sub);
-print(t);
-```
-
-### Complete Example
-
-```qlang
-// Define a 3x3 Matrix
-let M = [
-    [1.0, 2.0, 3.0],
-    [4.0, 5.0, 6.0],
-    [7.0, 8.0, 9.0]
-];
-
-// 2D Slicing & Transpose
-let sub = M[0..2, 1..3];
-let t = transpose(M);
-
-print(sub);
-print(t);
-```
-
-Save the example as `test.ql`, then run:
-
-```bash
-cargo run -- run test.ql
-```
-
----
-
-## 📁 Project Structure
-
-```text
-qlc/
-├── crates/
-│   ├── ql_ast/
-│   ├── ql_checker/
-│   ├── ql_codegen/
-│   ├── ql_lexer/
-│   └── ql_parser/
-├── src/
-│   └── main.rs
-├── tcc/
-├── test.ql
-├── Cargo.toml
-└── README.md
-```
-
----
-
-## 🔧 Development
-
-Build the workspace:
+### Build the Compiler
 
 ```bash
 cargo build
 ```
 
-Run tests:
-
-```bash
-cargo test
-```
-
-Run the compiler in development mode:
+### Run a QLang Program
 
 ```bash
 cargo run -- run test.ql
 ```
 
-For a release build:
+### Build a Native Executable
 
 ```bash
-cargo build --release
+cargo run -- build test.ql -o test.exe
 ```
 
----
+## Example
 
-## 📌 Roadmap
+```qlang
+let M = [
+    [1.0, 2.0, 3.0],
+    [4.0, 5.0, 6.0],
+    [7.0, 8.0, 9.0]
+];
 
-Potential areas for future development include:
+let sub = M[0..2, 1..3];
+let t = transpose(M);
 
-- [ ] Expanded vector operations
-- [ ] Matrix arithmetic and linear algebra primitives
-- [ ] More comprehensive compile-time diagnostics
-- [ ] Additional C code-generation optimizations
-- [ ] Cross-platform TinyCC packaging
-- [ ] Standard library for numerical operations
-- [ ] Improved CLI diagnostics and developer tooling
+print(sub);
+print(t);
+```
 
----
+## Architecture
 
-## 🤝 Contributing
+QLang uses a modular compiler pipeline:
 
-Contributions are welcome.
+```text
+QLang Source
+     │
+     ▼
+   Lexer
+     │
+     ▼
+   Parser
+     │
+     ▼
+     AST
+     │
+     ▼
+  Checker
+     │
+     ▼
+ C Codegen
+     │
+     ▼
+   TinyCC
+     │
+     ▼
+Native Binary
+```
 
-Before submitting a change:
+The compiler is implemented in Rust and organized into the following crates:
 
-1. Create a focused branch for your work.
-2. Keep compiler stages modular and independently testable.
-3. Add or update tests for new language behavior.
-4. Run the test suite with `cargo test`.
-5. Keep generated C code valid and portable where possible.
-6. Open a pull request describing the change and its motivation.
+```text
+crates/
+├── ql_ast
+├── ql_checker
+├── ql_codegen
+├── ql_lexer
+└── ql_parser
+```
 
----
+## Language Features
 
-## 📄 License
+### Matrix and Vector Operations
 
-QLang is released under the [MIT License](LICENSE).
+QLang provides built-in support for numerical data structures, including matrices and vectors.
+
+### Static Type and Shape Checking
+
+Matrix dimensions and types are validated during compilation to help detect invalid operations before execution.
+
+### Matrix Slicing
+
+Two-dimensional matrices can be sliced using row and column ranges:
+
+```qlang
+let sub = M[0..2, 1..3];
+```
+
+### Matrix Transposition
+
+Matrices can be transposed using the built-in `transpose` function:
+
+```qlang
+let t = transpose(M);
+```
+
+### C Code Generation
+
+QLang translates source programs into C code as an intermediate compilation step.
+
+### Native Executables
+
+The generated C code is compiled into a native executable using the bundled TinyCC toolchain.
+
+## Status
+
+QLang is an early-stage programming language and compiler.
+
+The language, compiler, and standard library are under active development. APIs, syntax, and project structure may change over time.
+
+## Contributing
+
+Contributions, experiments, and feedback are welcome.
+
+To contribute:
+
+1. Fork the repository.
+2. Create a branch for your changes.
+3. Implement and test your changes.
+4. Open a pull request with a clear description.
+
+For compiler development, refer to the source code and issue tracker.
+
+## License
+
+QLang is licensed under the MIT License.
