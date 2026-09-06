@@ -1,0 +1,20 @@
+[package]
+name = "qlc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ql_ast = { path = "crates/ql_ast" }
+ql_lexer = { path = "crates/ql_lexer" }
+ql_parser = { path = "crates/ql_parser" }
+ql_checker = { path = "crates/ql_checker" }
+ql_codegen = { path = "crates/ql_codegen" }
+
+[workspace]
+members = [
+    "crates/ql_ast",
+    "crates/ql_lexer",
+    "crates/ql_parser",
+    "crates/ql_checker",
+    "crates/ql_codegen",
+]

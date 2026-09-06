@@ -1,0 +1,8 @@
+[package]
+name = "ql_codegen"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ql_ast = { path = "../ql_ast" }
+ql_checker = { path = "../ql_checker" }

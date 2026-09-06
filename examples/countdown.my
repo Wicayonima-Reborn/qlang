@@ -1,7 +1,0 @@
-let s: string = "Hello, world!";
-let s2 = clone(s);
-print(s);
-print(s2);
-
-let n: int = 5;
-print(n);

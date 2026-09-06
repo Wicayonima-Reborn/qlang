@@ -1,4 +1,0 @@
-let a: int = 10;
-let r1 = &a;
-let r2 = &a;
-print(a);

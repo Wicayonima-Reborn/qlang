@@ -1,3 +1,0 @@
-let a: int = 10;
-let mr = &mut a;
-let r = &a; // error: cannot borrow immutably while mutably borrowed

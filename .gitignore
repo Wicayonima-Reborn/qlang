@@ -1,11 +1,6 @@
-.vscode
-./vscode
-# Build artifacts
-build/
+/target/
+/tcc/
+output.c
 *.exe
-*.obj
-*.o
-*.asm
-
-# Temporary
-*.log
+*.pdb
+.vscode/
