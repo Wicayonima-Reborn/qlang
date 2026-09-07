@@ -20,6 +20,8 @@ impl TypeChecker {
         symbol_table.insert("relu".to_string(), ResolvedType::Void);
         symbol_table.insert("print".to_string(), ResolvedType::Void);
         symbol_table.insert("transpose".to_string(), ResolvedType::Void);
+        symbol_table.insert("zeros".to_string(), ResolvedType::Void);
+        symbol_table.insert("random".to_string(), ResolvedType::Void);
 
         TypeChecker { symbol_table }
     }
@@ -181,7 +183,7 @@ impl TypeChecker {
                     let right_ty = self.infer_expression_type(right);
 
                     match (&left_ty, &right_ty) {
-                        // 1. Matrix * Matrix (Perkalian Matriks)
+                        // 1. Matrix * Matrix
                         (
                             ResolvedType::Matrix { rows: r1, cols: c1, elem: m_elem },
                             ResolvedType::Matrix { rows: r2, cols: c2, elem: _ },
@@ -202,7 +204,7 @@ impl TypeChecker {
                                 cols: *c2,
                             }
                         }
-                        // 2. Matrix +/- Matrix (Penjumlahan / Pengurangan Matriks)
+                        // 2. Matrix +/- Matrix
                         (
                             ResolvedType::Matrix { rows: r1, cols: c1, elem: m_elem },
                             ResolvedType::Matrix { rows: r2, cols: c2, elem: _ },
@@ -310,6 +312,20 @@ impl TypeChecker {
                         };
                     } else {
                         panic!("[TYPE ERROR] 'transpose' only supports Matrix types");
+                    }
+                }
+                if (callee == "zeros" || callee == "random") && args.len() == 2 {
+                    if let (Expr::Number(r), Expr::Number(c)) = (&args[0], &args[1]) {
+                        let rows = *r as usize;
+                        let cols = *c as usize;
+                        println!("[GENERATOR CHECK PASSED] {}({},{}) -> Matrix({},{})", callee, rows, cols, rows, cols);
+                        return ResolvedType::Matrix {
+                            elem: Box::new(ResolvedType::F64),
+                            rows,
+                            cols,
+                        };
+                    } else {
+                        panic!("[TYPE ERROR] '{}' expects integer literal arguments for rows and columns", callee);
                     }
                 }
                 ResolvedType::Void

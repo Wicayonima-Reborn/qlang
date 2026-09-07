@@ -21,7 +21,8 @@ impl CodeGenerator {
 
         code.push_str("#include <stdio.h>\n");
         code.push_str("#include <stdlib.h>\n");
-        code.push_str("#include <math.h>\n\n");
+        code.push_str("#include <math.h>\n");
+        code.push_str("#include <time.h>\n\n");
 
         // Runtime Helpers
         code.push_str("// QLang C Runtime Helpers\n");
@@ -43,6 +44,14 @@ impl CodeGenerator {
         code.push_str("        printf(\"]\\n\");\n");
         code.push_str("    }\n");
         code.push_str("    printf(\"]\\n\");\n");
+        code.push_str("}\n\n");
+
+        code.push_str("void mat_zeros(double* out, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) out[i] = 0.0;\n");
+        code.push_str("}\n\n");
+
+        code.push_str("void mat_random(double* out, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) out[i] = (double)rand() / (double)RAND_MAX;\n");
         code.push_str("}\n\n");
 
         code.push_str("void vec_mat_mul(double* out, const double* v, const double* m, int v_len, int m_cols) {\n");
@@ -120,6 +129,7 @@ impl CodeGenerator {
         code.push_str("}\n\n");
 
         code.push_str("int main() {\n");
+        code.push_str("    srand(12345);\n"); // Fixed seed agar deterministik
 
         for stmt in &program.statements {
             match stmt {
@@ -301,7 +311,6 @@ impl CodeGenerator {
 
                     let temp = self.new_temp();
                     match (&left_ty, &right_ty) {
-                        // Perkalian Matriks (Matrix * Matrix)
                         (
                             ResolvedType::Matrix { rows: r1, cols: c1, elem: _ },
                             ResolvedType::Matrix { rows: _r2, cols: c2, elem: _ },
@@ -314,7 +323,6 @@ impl CodeGenerator {
                             ));
                             temp
                         }
-                        // Penjumlahan / Pengurangan Matriks (Matrix +/- Matrix)
                         (
                             ResolvedType::Matrix { rows: r1, cols: c1, elem: _ },
                             ResolvedType::Matrix { rows: _r2, cols: _c2, elem: _ },
@@ -426,6 +434,28 @@ impl CodeGenerator {
                             "    mat_transpose({}, {}, {}, {});\n",
                             temp, arg_var, rows, cols
                         ));
+                        return temp;
+                    }
+                }
+                if callee == "zeros" && args.len() == 2 {
+                    if let (Expr::Number(r), Expr::Number(c)) = (&args[0], &args[1]) {
+                        let rows = *r as usize;
+                        let cols = *c as usize;
+                        let total = rows * cols;
+                        let temp = self.new_temp();
+                        code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                        code.push_str(&format!("    mat_zeros({}, {});\n", temp, total));
+                        return temp;
+                    }
+                }
+                if callee == "random" && args.len() == 2 {
+                    if let (Expr::Number(r), Expr::Number(c)) = (&args[0], &args[1]) {
+                        let rows = *r as usize;
+                        let cols = *c as usize;
+                        let total = rows * cols;
+                        let temp = self.new_temp();
+                        code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                        code.push_str(&format!("    mat_random({}, {});\n", temp, total));
                         return temp;
                     }
                 }
