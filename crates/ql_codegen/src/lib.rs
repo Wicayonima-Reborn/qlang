@@ -21,6 +21,7 @@ impl CodeGenerator {
 
         code.push_str("#include <stdio.h>\n");
         code.push_str("#include <stdlib.h>\n");
+        code.push_str("#include <string.h>\n");
         code.push_str("#include <math.h>\n");
         code.push_str("#include <time.h>\n\n");
 
@@ -44,6 +45,24 @@ impl CodeGenerator {
         code.push_str("        printf(\"]\\n\");\n");
         code.push_str("    }\n");
         code.push_str("    printf(\"]\\n\");\n");
+        code.push_str("}\n\n");
+
+        code.push_str("void read_csv_file(double* out, int rows, int cols, const char* filename) {\n");
+        code.push_str("    FILE* f = fopen(filename, \"r\");\n");
+        code.push_str("    if(!f) { printf(\"[RUNTIME ERROR] Failed to open CSV file: %s\\n\", filename); exit(1); }\n");
+        code.push_str("    char line[1024];\n");
+        code.push_str("    int r = 0;\n");
+        code.push_str("    while(fgets(line, sizeof(line), f) && r < rows) {\n");
+        code.push_str("        char* tok = strtok(line, \",\");\n");
+        code.push_str("        int c = 0;\n");
+        code.push_str("        while(tok && c < cols) {\n");
+        code.push_str("            out[r * cols + c] = atof(tok);\n");
+        code.push_str("            tok = strtok(NULL, \",\");\n");
+        code.push_str("            c++;\n");
+        code.push_str("        }\n");
+        code.push_str("        r++;\n");
+        code.push_str("    }\n");
+        code.push_str("    fclose(f);\n");
         code.push_str("}\n\n");
 
         code.push_str("void mat_zeros(double* out, int size) {\n");
@@ -440,6 +459,17 @@ impl CodeGenerator {
                             code.push_str(&format!("    printf(\"%.4f\\n\", {});\n", arg_var));
                         }
                         _ => {}
+                    }
+                }
+                if callee == "read_csv" && args.len() == 2 {
+                    if let (Expr::Number(r), Expr::Number(c)) = (&args[0], &args[1]) {
+                        let rows = *r as usize;
+                        let cols = *c as usize;
+                        let total = rows * cols;
+                        let temp = self.new_temp();
+                        code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                        code.push_str(&format!("    read_csv_file({}, {}, {}, \"data.csv\");\n", temp, rows, cols));
+                        return temp;
                     }
                 }
                 if callee == "mse_loss" && args.len() == 2 {

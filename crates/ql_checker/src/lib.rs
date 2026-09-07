@@ -24,6 +24,7 @@ impl TypeChecker {
         symbol_table.insert("zeros".to_string(), ResolvedType::Void);
         symbol_table.insert("random".to_string(), ResolvedType::Void);
         symbol_table.insert("mse_loss".to_string(), ResolvedType::Void);
+        symbol_table.insert("read_csv".to_string(), ResolvedType::Void);
 
         TypeChecker { symbol_table }
     }
@@ -297,6 +298,18 @@ impl TypeChecker {
                 }
                 if callee == "print" && !args.is_empty() {
                     return self.infer_expression_type(&args[0]);
+                }
+                if callee == "read_csv" && args.len() == 2 {
+                    if let (Expr::Number(r), Expr::Number(c)) = (&args[0], &args[1]) {
+                        let rows = *r as usize;
+                        let cols = *c as usize;
+                        println!("[DATASET CHECK PASSED] read_csv -> Matrix({},{})", rows, cols);
+                        return ResolvedType::Matrix {
+                            elem: Box::new(ResolvedType::F64),
+                            rows,
+                            cols,
+                        };
+                    }
                 }
                 if callee == "mse_loss" && args.len() == 2 {
                     let pred_ty = self.infer_expression_type(&args[0]);

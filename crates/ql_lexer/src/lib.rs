@@ -2,144 +2,176 @@
 pub enum Token {
     Let,
     Ident(String),
+    Colon,
     Assign,
+    Semicolon,
     Number(f64),
     Decimal(String),
-    LBracket,
-    RBracket,
-    LParen,
-    RParen,
-    Comma,
-    Semicolon,
-    Colon,
-    At,          // @
-    PipeGreater, // |>
-    DotDot,      // ..
-    DotStar,     // .*
-    DotSlash,    // ./
-    DotPlus,     // .+
-    DotMinus,    // .-
     Plus,
     Minus,
     Star,
     Slash,
+    At,
+    PipeGreater,
+    DotPlus,
+    DotMinus,
+    DotStar,
+    DotSlash,
+    LParen,
+    RParen,
+    LBracket,
+    RBracket,
+    Comma,
+    DotDot,
     Eof,
 }
 
-pub struct Lexer<'a> {
-    chars: std::iter::Peekable<std::str::Chars<'a>>,
+pub struct Lexer {
+    input: Vec<char>,
+    pos: usize,
 }
 
-impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
+impl Lexer {
+    pub fn new(input: &str) -> Self {
         Lexer {
-            chars: input.chars().peekable(),
+            input: input.chars().collect(),
+            pos: 0,
         }
+    }
+
+    fn current_char(&self) -> Option<char> {
+        if self.pos < self.input.len() {
+            Some(self.input[self.pos])
+        } else {
+            None
+        }
+    }
+
+    fn peek_char(&self) -> Option<char> {
+        if self.pos + 1 < self.input.len() {
+            Some(self.input[self.pos + 1])
+        } else {
+            None
+        }
+    }
+
+    fn advance(&mut self) {
+        self.pos += 1;
     }
 
     pub fn tokenize(&mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
 
-        while let Some(&ch) = self.chars.peek() {
-            match ch {
-                ' ' | '\t' | '\r' | '\n' => {
-                    self.chars.next();
+        while let Some(ch) = self.current_char() {
+            if ch.is_whitespace() {
+                self.advance();
+                continue;
+            }
+
+            // Support Komentar //
+            if ch == '/' && self.peek_char() == Some('/') {
+                while let Some(c) = self.current_char() {
+                    if c == '\n' {
+                        break;
+                    }
+                    self.advance();
                 }
+                continue;
+            }
+
+            match ch {
                 '=' => {
-                    self.chars.next();
+                    self.advance();
                     tokens.push(Token::Assign);
                 }
-                '[' => {
-                    self.chars.next();
-                    tokens.push(Token::LBracket);
-                }
-                ']' => {
-                    self.chars.next();
-                    tokens.push(Token::RBracket);
-                }
-                '(' => {
-                    self.chars.next();
-                    tokens.push(Token::LParen);
-                }
-                ')' => {
-                    self.chars.next();
-                    tokens.push(Token::RParen);
-                }
-                ',' => {
-                    self.chars.next();
-                    tokens.push(Token::Comma);
-                }
-                ';' => {
-                    self.chars.next();
-                    tokens.push(Token::Semicolon);
-                }
                 ':' => {
-                    self.chars.next();
+                    self.advance();
                     tokens.push(Token::Colon);
                 }
-                '@' => {
-                    self.chars.next();
-                    tokens.push(Token::At);
+                ';' => {
+                    self.advance();
+                    tokens.push(Token::Semicolon);
                 }
-                '|' => {
-                    self.chars.next();
-                    if let Some('>') = self.chars.peek() {
-                        self.chars.next();
-                        tokens.push(Token::PipeGreater);
-                    }
-                }
-                '.' => {
-                    self.chars.next();
-                    if let Some(&next_ch) = self.chars.peek() {
-                        match next_ch {
-                            '.' => {
-                                self.chars.next();
-                                tokens.push(Token::DotDot);
-                            }
-                            '*' => {
-                                self.chars.next();
-                                tokens.push(Token::DotStar);
-                            }
-                            '/' => {
-                                self.chars.next();
-                                tokens.push(Token::DotSlash);
-                            }
-                            '+' => {
-                                self.chars.next();
-                                tokens.push(Token::DotPlus);
-                            }
-                            '-' => {
-                                self.chars.next();
-                                tokens.push(Token::DotMinus);
-                            }
-                            _ => panic!("[LEXER ERROR] Unexpected character after '.'"),
-                        }
-                    } else {
-                        panic!("[LEXER ERROR] Unexpected EOF after '.'");
-                    }
+                ',' => {
+                    self.advance();
+                    tokens.push(Token::Comma);
                 }
                 '+' => {
-                    self.chars.next();
+                    self.advance();
                     tokens.push(Token::Plus);
                 }
                 '-' => {
-                    self.chars.next();
+                    self.advance();
                     tokens.push(Token::Minus);
                 }
                 '*' => {
-                    self.chars.next();
+                    self.advance();
                     tokens.push(Token::Star);
                 }
                 '/' => {
-                    self.chars.next();
+                    self.advance();
                     tokens.push(Token::Slash);
+                }
+                '@' => {
+                    self.advance();
+                    tokens.push(Token::At);
+                }
+                '(' => {
+                    self.advance();
+                    tokens.push(Token::LParen);
+                }
+                ')' => {
+                    self.advance();
+                    tokens.push(Token::RParen);
+                }
+                '[' => {
+                    self.advance();
+                    tokens.push(Token::LBracket);
+                }
+                ']' => {
+                    self.advance();
+                    tokens.push(Token::RBracket);
+                }
+                '|' => {
+                    if self.peek_char() == Some('>') {
+                        self.advance();
+                        self.advance();
+                        tokens.push(Token::PipeGreater);
+                    } else {
+                        panic!("[LEXER ERROR] Unexpected character '|'");
+                    }
+                }
+                '.' => {
+                    if self.peek_char() == Some('.') {
+                        self.advance();
+                        self.advance();
+                        tokens.push(Token::DotDot);
+                    } else if self.peek_char() == Some('+') {
+                        self.advance();
+                        self.advance();
+                        tokens.push(Token::DotPlus);
+                    } else if self.peek_char() == Some('-') {
+                        self.advance();
+                        self.advance();
+                        tokens.push(Token::DotMinus);
+                    } else if self.peek_char() == Some('*') {
+                        self.advance();
+                        self.advance();
+                        tokens.push(Token::DotStar);
+                    } else if self.peek_char() == Some('/') {
+                        self.advance();
+                        self.advance();
+                        tokens.push(Token::DotSlash);
+                    } else {
+                        panic!("[LEXER ERROR] Unexpected character '.'");
+                    }
                 }
                 'a'..='z' | 'A'..='Z' | '_' => {
                     let mut ident = String::new();
-                    while let Some(&c) = self.chars.peek() {
+                    while let Some(c) = self.current_char() {
                         if c.is_alphanumeric() || c == '_' {
                             ident.push(c);
-                            self.chars.next();
+                            self.advance();
                         } else {
                             break;
                         }
@@ -152,46 +184,25 @@ impl<'a> Lexer<'a> {
                 }
                 '0'..='9' => {
                     let mut num_str = String::new();
-                    let mut is_dec = false;
+                    let mut is_decimal = false;
 
-                    while let Some(&c) = self.chars.peek() {
+                    while let Some(c) = self.current_char() {
                         if c.is_ascii_digit() {
                             num_str.push(c);
-                            self.chars.next();
-                        } else if c == '.' {
-                            let mut clone_iter = self.chars.clone();
-                            clone_iter.next();
-                            if let Some(&next_c) = clone_iter.peek() {
-                                if next_c.is_ascii_digit() {
-                                    num_str.push('.');
-                                    self.chars.next();
-                                } else {
-                                    break;
-                                }
-                            } else {
-                                break;
-                            }
-                        } else if c == 'd' {
-                            is_dec = true;
-                            self.chars.next();
-                            break;
+                            self.advance();
+                        } else if c == '.' && self.peek_char() != Some('.') && !is_decimal {
+                            is_decimal = true;
+                            num_str.push(c);
+                            self.advance();
                         } else {
                             break;
                         }
                     }
 
-                    if is_dec {
-                        tokens.push(Token::Decimal(num_str));
-                    } else {
-                        let val: f64 = num_str.parse().unwrap_or_else(|_| {
-                            panic!("[LEXER ERROR] Failed to parse float literal: '{}'", num_str);
-                        });
-                        tokens.push(Token::Number(val));
-                    }
+                    let val: f64 = num_str.parse().unwrap();
+                    tokens.push(Token::Number(val));
                 }
-                _ => {
-                    self.chars.next();
-                }
+                _ => panic!("[LEXER ERROR] Unexpected character '{}'", ch),
             }
         }
 
