@@ -1,10 +1,20 @@
-let M = [
-    [-2.0, 0.0],
-    [1.0, 3.0]
+let X = [
+    [1.0, 2.0],
+    [3.0, 4.0]
 ];
 
-let R = relu(M);
-print(R);
+let W = [
+    [0.5, 0.1],
+    [-0.2, 0.8]
+];
 
-let S = sigmoid(M);
-print(S);
+let Target = [
+    [1.0, 0.0],
+    [0.0, 1.0]
+];
+
+let Z = X * W;
+let Pred = sigmoid(Z);
+
+let loss = mse_loss(Pred, Target);
+print(loss);

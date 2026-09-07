@@ -62,6 +62,15 @@ impl CodeGenerator {
         code.push_str("    for(int i = 0; i < size; i++) out[i] = 1.0 / (1.0 + exp(-in[i]));\n");
         code.push_str("}\n\n");
 
+        code.push_str("double mat_mse_loss(const double* pred, const double* target, int size) {\n");
+        code.push_str("    double sum = 0.0;\n");
+        code.push_str("    for(int i = 0; i < size; i++) {\n");
+        code.push_str("        double diff = pred[i] - target[i];\n");
+        code.push_str("        sum += diff * diff;\n");
+        code.push_str("    }\n");
+        code.push_str("    return sum / (double)size;\n");
+        code.push_str("}\n\n");
+
         code.push_str("void vec_mat_mul(double* out, const double* v, const double* m, int v_len, int m_cols) {\n");
         code.push_str("    for(int j = 0; j < m_cols; j++) {\n");
         code.push_str("        out[j] = 0.0;\n");
@@ -427,7 +436,22 @@ impl CodeGenerator {
                         ResolvedType::Matrix { rows, cols, elem: _ } => {
                             code.push_str(&format!("    print_matrix({}, {}, {});\n", arg_var, rows, cols));
                         }
+                        ResolvedType::F64 | ResolvedType::Dec => {
+                            code.push_str(&format!("    printf(\"%.4f\\n\", {});\n", arg_var));
+                        }
                         _ => {}
+                    }
+                }
+                if callee == "mse_loss" && args.len() == 2 {
+                    let pred_var = self.generate_expr(&args[0], code, checker);
+                    let target_var = self.generate_expr(&args[1], code, checker);
+                    let pred_ty = checker.infer_expression_type(&args[0]);
+
+                    if let ResolvedType::Matrix { rows, cols, elem: _ } = pred_ty {
+                        let total = rows * cols;
+                        let temp = self.new_temp();
+                        code.push_str(&format!("    double {} = mat_mse_loss({}, {}, {});\n", temp, pred_var, target_var, total));
+                        return temp;
                     }
                 }
                 if callee == "relu" && !args.is_empty() {

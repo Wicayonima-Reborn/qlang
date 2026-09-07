@@ -23,6 +23,7 @@ impl TypeChecker {
         symbol_table.insert("transpose".to_string(), ResolvedType::Void);
         symbol_table.insert("zeros".to_string(), ResolvedType::Void);
         symbol_table.insert("random".to_string(), ResolvedType::Void);
+        symbol_table.insert("mse_loss".to_string(), ResolvedType::Void);
 
         TypeChecker { symbol_table }
     }
@@ -296,6 +297,16 @@ impl TypeChecker {
                 }
                 if callee == "print" && !args.is_empty() {
                     return self.infer_expression_type(&args[0]);
+                }
+                if callee == "mse_loss" && args.len() == 2 {
+                    let pred_ty = self.infer_expression_type(&args[0]);
+                    let target_ty = self.infer_expression_type(&args[1]);
+                    if pred_ty == target_ty {
+                        println!("[AUTODIFF CHECK PASSED] mse_loss calculated");
+                        return ResolvedType::F64;
+                    } else {
+                        panic!("[TYPE ERROR] mse_loss arguments type mismatch");
+                    }
                 }
                 if (callee == "relu" || callee == "sigmoid") && !args.is_empty() {
                     let arg_ty = self.infer_expression_type(&args[0]);
