@@ -54,6 +54,17 @@ impl CodeGenerator {
         code.push_str("    }\n");
         code.push_str("}\n\n");
 
+        code.push_str("void mat_mat_mul(double* out, const double* a, const double* b, int m, int n, int p) {\n");
+        code.push_str("    for(int i = 0; i < m; i++) {\n");
+        code.push_str("        for(int j = 0; j < p; j++) {\n");
+        code.push_str("            out[i * p + j] = 0.0;\n");
+        code.push_str("            for(int k = 0; k < n; k++) {\n");
+        code.push_str("                out[i * p + j] += a[i * n + k] * b[k * p + j];\n");
+        code.push_str("            }\n");
+        code.push_str("        }\n");
+        code.push_str("    }\n");
+        code.push_str("}\n\n");
+
         code.push_str("void vec_relu(double* v, int len) {\n");
         code.push_str("    for(int i = 0; i < len; i++) {\n");
         code.push_str("        if(v[i] < 0.0) v[i] = 0.0;\n");
@@ -231,20 +242,33 @@ impl CodeGenerator {
                     let left_ty = checker.infer_expression_type(left);
                     let right_ty = checker.infer_expression_type(right);
 
-                    if let (
-                        ResolvedType::Vector { len: v_len, elem: _ },
-                        ResolvedType::Matrix { rows: _, cols: m_cols, elem: _ },
-                    ) = (left_ty, right_ty)
-                    {
-                        let temp = self.new_temp();
-                        code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, m_cols));
-                        code.push_str(&format!(
-                            "    vec_mat_mul({}, {}, {}, {}, {});\n",
-                            temp, left_var, right_var, v_len, m_cols
-                        ));
-                        temp
-                    } else {
-                        panic!("[CODEGEN ERROR] Unsupported MatMul operand types");
+                    match (left_ty, right_ty) {
+                        (
+                            ResolvedType::Vector { len: v_len, elem: _ },
+                            ResolvedType::Matrix { rows: _, cols: m_cols, elem: _ },
+                        ) => {
+                            let temp = self.new_temp();
+                            code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, m_cols));
+                            code.push_str(&format!(
+                                "    vec_mat_mul({}, {}, {}, {}, {});\n",
+                                temp, left_var, right_var, v_len, m_cols
+                            ));
+                            temp
+                        }
+                        (
+                            ResolvedType::Matrix { rows: r1, cols: c1, elem: _ },
+                            ResolvedType::Matrix { rows: _r2, cols: c2, elem: _ },
+                        ) => {
+                            let total = r1 * c2;
+                            let temp = self.new_temp();
+                            code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                            code.push_str(&format!(
+                                "    mat_mat_mul({}, {}, {}, {}, {}, {});\n",
+                                temp, left_var, right_var, r1, c1, c2
+                            ));
+                            temp
+                        }
+                        _ => panic!("[CODEGEN ERROR] Unsupported MatMul operand types"),
                     }
                 }
                 BinaryOp::Pipe => {
@@ -277,6 +301,32 @@ impl CodeGenerator {
 
                     let temp = self.new_temp();
                     match (&left_ty, &right_ty) {
+                        // Perkalian Matriks (Matrix * Matrix)
+                        (
+                            ResolvedType::Matrix { rows: r1, cols: c1, elem: _ },
+                            ResolvedType::Matrix { rows: _r2, cols: c2, elem: _ },
+                        ) if matches!(op, BinaryOp::Mul) => {
+                            let total = r1 * c2;
+                            code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                            code.push_str(&format!(
+                                "    mat_mat_mul({}, {}, {}, {}, {}, {});\n",
+                                temp, left_var, right_var, r1, c1, c2
+                            ));
+                            temp
+                        }
+                        // Penjumlahan / Pengurangan Matriks (Matrix +/- Matrix)
+                        (
+                            ResolvedType::Matrix { rows: r1, cols: c1, elem: _ },
+                            ResolvedType::Matrix { rows: _r2, cols: _c2, elem: _ },
+                        ) if matches!(op, BinaryOp::Add | BinaryOp::Sub) => {
+                            let total = r1 * c1;
+                            code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                            code.push_str(&format!(
+                                "    vec_elem_op({}, {}, {}, {}, '{}');\n",
+                                temp, left_var, right_var, total, op_char
+                            ));
+                            temp
+                        }
                         (ResolvedType::Vector { len, elem: _ }, ResolvedType::F64) => {
                             code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, len));
                             code.push_str(&format!(

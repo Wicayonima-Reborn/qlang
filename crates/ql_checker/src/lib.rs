@@ -148,7 +148,27 @@ impl TypeChecker {
                                 len: *m_cols,
                             }
                         }
-                        _ => panic!("[TYPE ERROR] Invalid types for '@' operator"),
+                        (
+                            ResolvedType::Matrix { rows: r1, cols: c1, elem: m_elem },
+                            ResolvedType::Matrix { rows: r2, cols: c2, elem: _ },
+                        ) => {
+                            if *c1 != *r2 {
+                                panic!(
+                                    "[SHAPE ERROR] Matrix dimensions mismatch for multiplication: ({},{}) vs ({},{})",
+                                    r1, c1, r2, c2
+                                );
+                            }
+                            println!(
+                                "[SHAPE CHECK PASSED] Matrix({},{}) * Matrix({},{}) -> Matrix({},{})",
+                                r1, c1, r2, c2, r1, c2
+                            );
+                            ResolvedType::Matrix {
+                                elem: m_elem.clone(),
+                                rows: *r1,
+                                cols: *c2,
+                            }
+                        }
+                        _ => panic!("[TYPE ERROR] Invalid types for '@' or MatMul operator"),
                     }
                 }
                 BinaryOp::Pipe => {
@@ -161,6 +181,49 @@ impl TypeChecker {
                     let right_ty = self.infer_expression_type(right);
 
                     match (&left_ty, &right_ty) {
+                        // 1. Matrix * Matrix (Perkalian Matriks)
+                        (
+                            ResolvedType::Matrix { rows: r1, cols: c1, elem: m_elem },
+                            ResolvedType::Matrix { rows: r2, cols: c2, elem: _ },
+                        ) if matches!(op, BinaryOp::Mul) => {
+                            if *c1 != *r2 {
+                                panic!(
+                                    "[SHAPE ERROR] Matrix dimensions mismatch for multiplication: ({},{}) vs ({},{})",
+                                    r1, c1, r2, c2
+                                );
+                            }
+                            println!(
+                                "[SHAPE CHECK PASSED] Matrix({},{}) * Matrix({},{}) -> Matrix({},{})",
+                                r1, c1, r2, c2, r1, c2
+                            );
+                            ResolvedType::Matrix {
+                                elem: m_elem.clone(),
+                                rows: *r1,
+                                cols: *c2,
+                            }
+                        }
+                        // 2. Matrix +/- Matrix (Penjumlahan / Pengurangan Matriks)
+                        (
+                            ResolvedType::Matrix { rows: r1, cols: c1, elem: m_elem },
+                            ResolvedType::Matrix { rows: r2, cols: c2, elem: _ },
+                        ) if matches!(op, BinaryOp::Add | BinaryOp::Sub) => {
+                            if *r1 != *r2 || *c1 != *c2 {
+                                panic!(
+                                    "[SHAPE ERROR] Matrix dimensions mismatch for element-wise operation: ({},{}) vs ({},{})",
+                                    r1, c1, r2, c2
+                                );
+                            }
+                            println!(
+                                "[SHAPE CHECK PASSED] Matrix({},{}) +/- Matrix({},{}) -> Matrix({},{})",
+                                r1, c1, r2, c2, r1, c1
+                            );
+                            ResolvedType::Matrix {
+                                elem: m_elem.clone(),
+                                rows: *r1,
+                                cols: *c1,
+                            }
+                        }
+                        // 3. Vector & Scalar Broadcasting
                         (ResolvedType::Vector { len, elem }, ResolvedType::F64)
                         | (ResolvedType::F64, ResolvedType::Vector { len, elem }) => {
                             println!("[BROADCAST CHECK PASSED] Vector({}) with Scalar F64", len);
@@ -169,6 +232,7 @@ impl TypeChecker {
                                 len: *len,
                             }
                         }
+                        // 4. Matrix & Scalar Broadcasting
                         (ResolvedType::Matrix { rows, cols, elem }, ResolvedType::F64)
                         | (ResolvedType::F64, ResolvedType::Matrix { rows, cols, elem }) => {
                             println!("[BROADCAST CHECK PASSED] Matrix({},{}) with Scalar F64", rows, cols);
@@ -178,6 +242,7 @@ impl TypeChecker {
                                 cols: *cols,
                             }
                         }
+                        // 5. Standard Scalar Ops
                         (ResolvedType::F64, ResolvedType::F64) => ResolvedType::F64,
                         _ => panic!("[TYPE ERROR] Unsupported operands for standard binary op"),
                     }
