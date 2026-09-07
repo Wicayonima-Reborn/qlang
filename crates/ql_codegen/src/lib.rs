@@ -54,6 +54,14 @@ impl CodeGenerator {
         code.push_str("    for(int i = 0; i < size; i++) out[i] = (double)rand() / (double)RAND_MAX;\n");
         code.push_str("}\n\n");
 
+        code.push_str("void mat_relu(double* out, const double* in, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) out[i] = (in[i] < 0.0) ? 0.0 : in[i];\n");
+        code.push_str("}\n\n");
+
+        code.push_str("void mat_sigmoid(double* out, const double* in, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) out[i] = 1.0 / (1.0 + exp(-in[i]));\n");
+        code.push_str("}\n\n");
+
         code.push_str("void vec_mat_mul(double* out, const double* v, const double* m, int v_len, int m_cols) {\n");
         code.push_str("    for(int j = 0; j < m_cols; j++) {\n");
         code.push_str("        out[j] = 0.0;\n");
@@ -129,7 +137,7 @@ impl CodeGenerator {
         code.push_str("}\n\n");
 
         code.push_str("int main() {\n");
-        code.push_str("    srand(12345);\n"); // Fixed seed agar deterministik
+        code.push_str("    srand(12345);\n");
 
         for stmt in &program.statements {
             match stmt {
@@ -420,6 +428,30 @@ impl CodeGenerator {
                             code.push_str(&format!("    print_matrix({}, {}, {});\n", arg_var, rows, cols));
                         }
                         _ => {}
+                    }
+                }
+                if callee == "relu" && !args.is_empty() {
+                    let arg_var = self.generate_expr(&args[0], code, checker);
+                    let arg_type = checker.infer_expression_type(&args[0]);
+
+                    if let ResolvedType::Matrix { rows, cols, elem: _ } = arg_type {
+                        let total = rows * cols;
+                        let temp = self.new_temp();
+                        code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                        code.push_str(&format!("    mat_relu({}, {}, {});\n", temp, arg_var, total));
+                        return temp;
+                    }
+                }
+                if callee == "sigmoid" && !args.is_empty() {
+                    let arg_var = self.generate_expr(&args[0], code, checker);
+                    let arg_type = checker.infer_expression_type(&args[0]);
+
+                    if let ResolvedType::Matrix { rows, cols, elem: _ } = arg_type {
+                        let total = rows * cols;
+                        let temp = self.new_temp();
+                        code.push_str(&format!("    double {}[{}] = {{0}};\n", temp, total));
+                        code.push_str(&format!("    mat_sigmoid({}, {}, {});\n", temp, arg_var, total));
+                        return temp;
                     }
                 }
                 if callee == "transpose" && !args.is_empty() {

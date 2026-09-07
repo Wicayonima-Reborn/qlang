@@ -1,5 +1,10 @@
-let Z = zeros(2, 3);
-print(Z);
+let M = [
+    [-2.0, 0.0],
+    [1.0, 3.0]
+];
 
-let R = random(2, 2);
+let R = relu(M);
 print(R);
+
+let S = sigmoid(M);
+print(S);

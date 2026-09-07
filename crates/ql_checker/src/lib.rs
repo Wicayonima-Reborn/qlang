@@ -18,6 +18,7 @@ impl TypeChecker {
     pub fn new() -> Self {
         let mut symbol_table = HashMap::new();
         symbol_table.insert("relu".to_string(), ResolvedType::Void);
+        symbol_table.insert("sigmoid".to_string(), ResolvedType::Void);
         symbol_table.insert("print".to_string(), ResolvedType::Void);
         symbol_table.insert("transpose".to_string(), ResolvedType::Void);
         symbol_table.insert("zeros".to_string(), ResolvedType::Void);
@@ -183,7 +184,6 @@ impl TypeChecker {
                     let right_ty = self.infer_expression_type(right);
 
                     match (&left_ty, &right_ty) {
-                        // 1. Matrix * Matrix
                         (
                             ResolvedType::Matrix { rows: r1, cols: c1, elem: m_elem },
                             ResolvedType::Matrix { rows: r2, cols: c2, elem: _ },
@@ -204,7 +204,6 @@ impl TypeChecker {
                                 cols: *c2,
                             }
                         }
-                        // 2. Matrix +/- Matrix
                         (
                             ResolvedType::Matrix { rows: r1, cols: c1, elem: m_elem },
                             ResolvedType::Matrix { rows: r2, cols: c2, elem: _ },
@@ -225,7 +224,6 @@ impl TypeChecker {
                                 cols: *c1,
                             }
                         }
-                        // 3. Vector & Scalar Broadcasting
                         (ResolvedType::Vector { len, elem }, ResolvedType::F64)
                         | (ResolvedType::F64, ResolvedType::Vector { len, elem }) => {
                             println!("[BROADCAST CHECK PASSED] Vector({}) with Scalar F64", len);
@@ -234,7 +232,6 @@ impl TypeChecker {
                                 len: *len,
                             }
                         }
-                        // 4. Matrix & Scalar Broadcasting
                         (ResolvedType::Matrix { rows, cols, elem }, ResolvedType::F64)
                         | (ResolvedType::F64, ResolvedType::Matrix { rows, cols, elem }) => {
                             println!("[BROADCAST CHECK PASSED] Matrix({},{}) with Scalar F64", rows, cols);
@@ -244,7 +241,6 @@ impl TypeChecker {
                                 cols: *cols,
                             }
                         }
-                        // 5. Standard Scalar Ops
                         (ResolvedType::F64, ResolvedType::F64) => ResolvedType::F64,
                         _ => panic!("[TYPE ERROR] Unsupported operands for standard binary op"),
                     }
@@ -300,6 +296,20 @@ impl TypeChecker {
                 }
                 if callee == "print" && !args.is_empty() {
                     return self.infer_expression_type(&args[0]);
+                }
+                if (callee == "relu" || callee == "sigmoid") && !args.is_empty() {
+                    let arg_ty = self.infer_expression_type(&args[0]);
+                    match &arg_ty {
+                        ResolvedType::Matrix { rows, cols, elem: _ } => {
+                            println!("[ACTIVATION CHECK PASSED] {}(Matrix({},{}))", callee, rows, cols);
+                            return arg_ty;
+                        }
+                        ResolvedType::Vector { len, elem: _ } => {
+                            println!("[ACTIVATION CHECK PASSED] {}(Vector({}))", callee, len);
+                            return arg_ty;
+                        }
+                        _ => panic!("[TYPE ERROR] '{}' requires Matrix or Vector operand", callee),
+                    }
                 }
                 if callee == "transpose" && !args.is_empty() {
                     let arg_ty = self.infer_expression_type(&args[0]);

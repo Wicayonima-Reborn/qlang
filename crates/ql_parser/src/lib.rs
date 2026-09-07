@@ -156,16 +156,28 @@ impl Parser {
     }
 
     fn parse_primary(&mut self) -> Expr {
+        // Penanganan Unary Minus (-2.0)
+        let mut is_negative = false;
+        if self.current() == &Token::Minus {
+            is_negative = true;
+            self.advance();
+        }
+
         let mut expr = match self.current().clone() {
             Token::Number(n) => {
                 self.advance();
-                Expr::Number(n)
+                let val = if is_negative { -n } else { n };
+                Expr::Number(val)
             }
             Token::Decimal(s) => {
                 self.advance();
-                Expr::Decimal(s)
+                let val = if is_negative { format!("-{}", s) } else { s };
+                Expr::Decimal(val)
             }
             Token::Ident(id) => {
+                if is_negative {
+                    panic!("[PARSER ERROR] Unary minus on identifier '{}' not supported directly", id);
+                }
                 self.advance();
                 if self.current() == &Token::LParen {
                     self.advance();
@@ -186,8 +198,16 @@ impl Parser {
                     Expr::Variable(id)
                 }
             }
-            Token::LBracket => self.parse_array_literal(),
+            Token::LBracket => {
+                if is_negative {
+                    panic!("[PARSER ERROR] Unary minus on array literal not supported");
+                }
+                self.parse_array_literal()
+            }
             Token::LParen => {
+                if is_negative {
+                    panic!("[PARSER ERROR] Unary minus before '(' not supported directly");
+                }
                 self.advance();
                 let inner = self.parse_expression();
                 self.expect(Token::RParen);
