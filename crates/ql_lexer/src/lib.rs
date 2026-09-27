@@ -1,6 +1,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Let,
+    Train,
     Ident(String),
     Colon,
     Assign,
@@ -178,6 +179,8 @@ impl Lexer {
                     }
                     if ident == "let" {
                         tokens.push(Token::Let);
+                    } else if ident == "train" {
+                        tokens.push(Token::Train);
                     } else {
                         tokens.push(Token::Ident(ident));
                     }

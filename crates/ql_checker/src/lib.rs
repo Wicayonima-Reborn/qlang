@@ -46,6 +46,22 @@ impl TypeChecker {
             Statement::Expression(expr) => {
                 self.infer_expression_type(expr);
             }
+            Statement::Train { loss_var, lr, epochs } => {
+                let loss_ty = self
+                    .symbol_table
+                    .get(loss_var)
+                    .cloned()
+                    .unwrap_or_else(|| panic!("[TYPE ERROR] Undefined loss variable '{}' in train()", loss_var));
+
+                if loss_ty != ResolvedType::F64 {
+                    panic!("[TYPE ERROR] Expected F64 scalar loss variable in train(), found {:?}", loss_ty);
+                }
+
+                println!(
+                    "[TRAIN CHECK PASSED] Target loss '{}' (F64), Learning Rate: {}, Epochs: {}",
+                    loss_var, lr, epochs
+                );
+            }
         }
     }
 

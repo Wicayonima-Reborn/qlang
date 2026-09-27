@@ -58,6 +58,11 @@ pub enum Statement {
         value: Expr,
     },
     Expression(Expr),
+    Train {
+        loss_var: String,
+        lr: f64,
+        epochs: usize,
+    },
 }
 
 #[derive(Debug, Clone)]

@@ -41,6 +41,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Statement {
         match self.current() {
             Token::Let => self.parse_let_statement(),
+            Token::Train => self.parse_train_statement(),
             _ => {
                 let expr = self.parse_expression();
                 self.expect(Token::Semicolon);
@@ -70,6 +71,47 @@ impl Parser {
         self.expect(Token::Semicolon);
 
         Statement::Let { name, ty, value }
+    }
+
+    fn parse_train_statement(&mut self) -> Statement {
+        self.advance(); // consume Token::Train
+        self.expect(Token::LParen);
+
+        let loss_var = if let Token::Ident(id) = self.current().clone() {
+            self.advance();
+            id
+        } else {
+            panic!("[PARSER ERROR] Expected loss variable identifier in train(...)");
+        };
+
+        self.expect(Token::Comma);
+
+        let lr = if let Token::Number(val) = self.current() {
+            let num = *val;
+            self.advance();
+            num
+        } else {
+            panic!("[PARSER ERROR] Expected learning rate number in train(...)");
+        };
+
+        self.expect(Token::Comma);
+
+        let epochs = if let Token::Number(val) = self.current() {
+            let num = *val as usize;
+            self.advance();
+            num
+        } else {
+            panic!("[PARSER ERROR] Expected epochs number in train(...)");
+        };
+
+        self.expect(Token::RParen);
+        self.expect(Token::Semicolon);
+
+        Statement::Train {
+            loss_var,
+            lr,
+            epochs,
+        }
     }
 
     fn parse_type_annotation(&mut self) -> TypeAnnotation {

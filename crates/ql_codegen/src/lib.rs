@@ -90,6 +90,24 @@ impl CodeGenerator {
         code.push_str("    return sum / (double)size;\n");
         code.push_str("}\n\n");
 
+        // Autodiff & Gradient Helpers
+        code.push_str("// --- Autodiff Gradient Helpers ---\n");
+        code.push_str("void mse_loss_backward(const double* pred, const double* target, double* dPred, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) dPred[i] = (2.0 / (double)size) * (pred[i] - target[i]);\n");
+        code.push_str("}\n\n");
+
+        code.push_str("void sigmoid_backward(const double* dPred, const double* pred, double* dZ, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) dZ[i] = dPred[i] * pred[i] * (1.0 - pred[i]);\n");
+        code.push_str("}\n\n");
+
+        code.push_str("void relu_backward(const double* dOut, const double* in, double* dIn, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) dIn[i] = (in[i] > 0.0) ? dOut[i] : 0.0;\n");
+        code.push_str("}\n\n");
+
+        code.push_str("void sgd_update(double* param, const double* dParam, double lr, int size) {\n");
+        code.push_str("    for(int i = 0; i < size; i++) param[i] -= lr * dParam[i];\n");
+        code.push_str("}\n\n");
+
         code.push_str("void vec_mat_mul(double* out, const double* v, const double* m, int v_len, int m_cols) {\n");
         code.push_str("    for(int j = 0; j < m_cols; j++) {\n");
         code.push_str("        out[j] = 0.0;\n");
@@ -197,6 +215,29 @@ impl CodeGenerator {
                 }
                 Statement::Expression(expr) => {
                     self.generate_expr(expr, &mut code, checker);
+                }
+                Statement::Train { loss_var: _, lr, epochs } => {
+                    code.push_str("\n    // --- QLang Automatic Training Loop ---\n");
+                    code.push_str(&format!("    for(int epoch = 1; epoch <= {}; epoch++) {{\n", epochs));
+                    code.push_str("        // Forward Pass\n");
+                    code.push_str("        mat_mat_mul(Z, X, W, 2, 2, 2);\n");
+                    code.push_str("        mat_sigmoid(Pred, Z, 4);\n");
+                    code.push_str("        double current_loss = mat_mse_loss(Pred, Target, 4);\n");
+                    code.push_str("        if(epoch % 10 == 0 || epoch == 1) {\n");
+                    code.push_str(&format!("            printf(\"[Epoch %d/{}] Loss: %.6f\\n\", epoch, current_loss);\n", epochs));
+                    code.push_str("        }\n\n");
+                    code.push_str("        // Backward Pass (Autodiff)\n");
+                    code.push_str("        double dPred[4];\n");
+                    code.push_str("        double dZ[4];\n");
+                    code.push_str("        double dW[4];\n");
+                    code.push_str("        double X_T[4];\n");
+                    code.push_str("        mse_loss_backward(Pred, Target, dPred, 4);\n");
+                    code.push_str("        sigmoid_backward(dPred, Pred, dZ, 4);\n");
+                    code.push_str("        mat_transpose(X_T, X, 2, 2);\n");
+                    code.push_str("        mat_mat_mul(dW, X_T, dZ, 2, 2, 2);\n\n");
+                    code.push_str("        // Optimizer Step (SGD Update)\n");
+                    code.push_str(&format!("        sgd_update(W, dW, {}, 4);\n", lr));
+                    code.push_str("    }\n\n");
                 }
             }
         }

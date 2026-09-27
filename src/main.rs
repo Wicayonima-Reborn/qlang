@@ -1,11 +1,11 @@
+use ql_checker::TypeChecker;
+use ql_codegen::CodeGenerator;
+use ql_lexer::Lexer;
+use ql_parser::Parser;
 use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
-use ql_lexer::Lexer;
-use ql_parser::Parser;
-use ql_checker::TypeChecker;
-use ql_codegen::CodeGenerator;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -59,9 +59,9 @@ fn main() {
 fn print_help() {
     println!("QLang Compiler (qlc) - Version 0.1.0");
     println!("Usage:");
-    println!("  qlc run <file.ql>                 Compile and immediately run program");
+    println!("  qlc run <file.ql>                Compile and immediately run program");
     println!("  qlc build <file.ql> [-o <name>]   Build standalone binary executable");
-    println!("  qlc <file.ql>                     Default build behavior");
+    println!("  qlc <file.ql>                    Default build behavior");
 }
 
 fn compile_file(file_path: &str, output_name: Option<String>) -> Option<String> {
