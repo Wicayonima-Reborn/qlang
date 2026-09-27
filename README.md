@@ -15,13 +15,13 @@ A lightweight programming language for matrix and vector computation, targeted a
 
 ## Overview
 
-QLang (Quant Lang) is a lightweight programming language designed for numerical computation, tensor and matrix operations, and neural network primitives.
+QLang (Quant Lang) is a lightweight programming language designed for numerical computation, tensor and matrix operations, neural network primitives, and automatic differentiation.
 
-QLang programs are statically checked for type and shape compatibility, transpiled to C, and compiled into native executables using a bundled TinyCC toolchain.
+QLang programs are statically checked for type and shape compatibility, transpiled to C with numerical and autodiff runtime support, and compiled into native executables using a bundled TinyCC toolchain.
 
 ## Why QLang?
 
-QLang is designed to keep numerical and AI forward-pass code concise while providing compile-time validation for matrix operations and preventing common runtime shape mismatches.
+QLang is designed to keep numerical and AI/ML code concise while providing compile-time validation for matrix operations and built-in support for model training.
 
 * Linear algebra operations for matrices and vectors
 * Matrix multiplication using `*` or `@`
@@ -29,10 +29,12 @@ QLang is designed to keep numerical and AI forward-pass code concise while provi
 * Static type and shape checking
 * Matrix generators such as `zeros()` and `random()`
 * Element-wise activation functions such as `relu()` and `sigmoid()`
-* Mean Squared Error evaluation with `mse_loss()`
+* Mean Squared Error with `mse_loss()`
 * Dataset loading with `read_csv()`
 * Two-dimensional matrix slicing
 * Matrix transposition
+* Reverse-mode automatic differentiation
+* SGD optimization through `train()`
 * Single-line comments using `//`
 * C code generation
 * Native executable output
@@ -60,30 +62,33 @@ cargo run -- build test.ql -o test.exe
 
 ## Example
 
-The following example demonstrates a simple one-layer AI/ML forward pass:
+The following example demonstrates a simple AI/ML training workflow in QLang:
 
 ```qlang
-// Read a dataset from a CSV file with 2 rows and 2 columns
+// Load a dataset
 let X = read_csv(2, 2);
 
-// Initialize the weight matrix
+// Initialize model weights
 let W = [
     [0.5, 0.1],
     [-0.2, 0.8]
 ];
 
-// Define the target values
+// Define target values
 let Target = [
     [1.0, 0.0],
     [0.0, 1.0]
 ];
 
-// Perform matrix multiplication and apply sigmoid activation
-let Z = X * W;
+// Forward pass
+let Z = X @ W;
 let Pred = sigmoid(Z);
 
-// Calculate the Mean Squared Error loss
+// Calculate loss
 let loss = mse_loss(Pred, Target);
+
+// Train using reverse-mode autodiff and SGD
+train(loss, 0.5, 50);
 
 print(loss);
 ```
@@ -110,6 +115,9 @@ QLang Source (.ql)
        ▼
   C Codegen
        │
+       ├── Numerical Runtime
+       └── Autodiff Runtime
+       │
        ▼
     TinyCC
        │
@@ -132,7 +140,7 @@ crates/
 
 ### Matrix and Vector Operations
 
-QLang provides built-in support for numerical data structures, including one-dimensional vectors and two-dimensional matrices.
+QLang provides built-in support for one-dimensional vectors and two-dimensional matrices.
 
 Matrix multiplication can be written using either the `*` or `@` operator:
 
@@ -141,20 +149,20 @@ let C = A * B;
 let D = A @ B;
 ```
 
-The `*` and `@` operators perform matrix multiplication when applied to compatible matrices. Matrix addition and subtraction are performed element-wise:
+Matrix addition and subtraction are performed element-wise:
 
 ```qlang
 let Sum = A + B;
 let Difference = A - B;
 ```
 
-Matrices must have compatible dimensions for multiplication and matching dimensions for element-wise addition or subtraction.
+Matrices must have compatible dimensions for multiplication and matching dimensions for element-wise operations.
 
 ### Static Type and Shape Checking
 
-Matrix dimensions and types are validated during compilation to help detect invalid operations before execution.
+Matrix dimensions and types are validated during compilation to detect invalid operations before execution.
 
-For example, multiplying a `2 × 3` matrix by a `3 × 2` matrix produces a `2 × 2` matrix:
+For example:
 
 ```text
 Matrix(2,3) * Matrix(3,2) -> Matrix(2,2)
@@ -164,15 +172,15 @@ Invalid dimensions result in a compile-time error before C code generation.
 
 ### Matrix Generators
 
-QLang provides built-in functions for creating commonly used matrices:
+QLang provides built-in functions for creating matrices:
 
 ```qlang
 let Z = zeros(3, 3);
 let R = random(2, 4);
 ```
 
-* `zeros(rows, cols)` creates a matrix initialized with zero values.
-* `random(rows, cols)` creates a matrix populated with generated values.
+- `zeros(rows, cols)` creates a zero-initialized matrix.
+- `random(rows, cols)` creates a matrix populated with generated values.
 
 ### Activation Functions
 
@@ -183,12 +191,12 @@ let Activated = sigmoid(M);
 let Filtered = relu(M);
 ```
 
-* `relu(M)` applies the Rectified Linear Unit function element-wise.
-* `sigmoid(M)` applies the sigmoid function element-wise.
+- `relu(M)` applies the Rectified Linear Unit function element-wise.
+- `sigmoid(M)` applies the sigmoid function element-wise.
 
 ### Loss Evaluation
 
-The built-in `mse_loss()` function calculates the Mean Squared Error between prediction and target matrices:
+The built-in `mse_loss()` function calculates Mean Squared Error between prediction and target matrices:
 
 ```qlang
 let loss = mse_loss(Pred, Target);
@@ -204,7 +212,29 @@ CSV datasets can be loaded using `read_csv(rows, cols)`:
 let Data = read_csv(10, 5);
 ```
 
-The function reads the specified number of rows and columns from a CSV file and returns the values as a matrix.
+The function reads the specified dataset dimensions and returns the values as a matrix.
+
+### Automatic Differentiation
+
+QLang includes a reverse-mode automatic differentiation engine for supported numerical operations.
+
+Gradients are generated as part of the C runtime during code generation, allowing QLang programs to perform backward propagation without manually defining gradient calculations.
+
+### SGD Training
+
+The built-in `train()` statement provides an integrated training loop using Stochastic Gradient Descent:
+
+```qlang
+train(loss, learning_rate, epochs);
+```
+
+For example:
+
+```qlang
+train(loss, 0.5, 50);
+```
+
+The compiler generates the required backward-pass and optimization logic for the supported operations.
 
 ### Matrix Slicing
 
@@ -224,16 +254,18 @@ let t = transpose(M);
 
 ### Single-Line Comments
 
-QLang supports single-line comments using the `//` syntax:
+QLang supports single-line comments using `//`:
 
 ```qlang
-// This is a single-line comment
+// Initialize a matrix
 let M = zeros(2, 2);
 ```
 
 ### C Code Generation
 
-QLang translates source programs into C code as an intermediate compilation step. The generated code includes the required runtime helpers for matrix operations, activations, loss evaluation, and related numerical functionality.
+QLang translates validated source programs into C code as an intermediate compilation step.
+
+Generated code includes the runtime helpers required for supported matrix operations, activation functions, loss evaluation, and automatic differentiation.
 
 ### Native Executables
 
@@ -243,17 +275,26 @@ The generated C code is compiled into a native executable using the bundled Tiny
 
 QLang is an active early-stage domain-specific programming language and compiler.
 
-**Phase 1: Foundational Compiler and Matrix Engine — COMPLETED** 
+**Phase 1: Foundational Compiler and Matrix Engine — COMPLETED**
 
-This phase includes parsing, static type and shape checking, C code generation, matrix operations, matrix generators, activation functions, dataset loading, loss evaluation, and single-line comments.
+Includes the lexer, parser, AST, static type and shape checking, C code generation, matrix operations, matrix generators, activation functions, dataset loading, loss evaluation, slicing, and comments.
 
 **Phase 2: Autodiff Engine, Gradient Computation, and SGD Optimizer — COMPLETED**
 
-Includes train() statement parsing, reverse-mode autodiff C runtime gradient helpers (mse_loss_backward, sigmoid_backward, relu_backward, mat_transpose), and automated C training loop generation with SGD weight optimization.
+Includes the `train()` statement, reverse-mode automatic differentiation, gradient runtime helpers, backward propagation, and automated SGD training loop generation.
 
 **Phase 3: Model Persistence & Generalized Computation Graph — IN PROGRESS**
 
-Planned features include model weights export/import (save_weights, load_weights), dynamic multi-layer computation graph tracing, and standard library expansion (Adam optimizer, Softmax).
+Planned features include:
+
+- Model weight export and import
+- `save_weights()` and `load_weights()`
+- Dynamic multi-layer computation graph tracing
+- Expanded numerical standard library
+- Additional optimizers such as Adam
+- Additional neural network operations such as Softmax
+
+The language, compiler, and standard library may continue to evolve as development progresses.
 
 ## Contributing
 
@@ -262,7 +303,6 @@ Contributions, experiments, and feedback are welcome.
 To contribute:
 
 1. Fork the repository.
-
 2. Create a branch for your changes:
 
    ```bash
