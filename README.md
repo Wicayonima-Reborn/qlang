@@ -243,11 +243,17 @@ The generated C code is compiled into a native executable using the bundled Tiny
 
 QLang is an active early-stage domain-specific programming language and compiler.
 
-**Phase 1: Foundational Compiler and Matrix Engine** is complete. This phase includes parsing, static type and shape checking, C code generation, matrix operations, matrix generators, activation functions, dataset loading, loss evaluation, and single-line comments.
+**Phase 1: Foundational Compiler and Matrix Engine — COMPLETED** 
 
-**Phase 2: Autodiff Engine, Gradient Computation, and SGD Optimizer** is currently under development.
+This phase includes parsing, static type and shape checking, C code generation, matrix operations, matrix generators, activation functions, dataset loading, loss evaluation, and single-line comments.
 
-The language, compiler, and standard library may continue to evolve as development progresses.
+**Phase 2: Autodiff Engine, Gradient Computation, and SGD Optimizer — COMPLETED**
+
+Includes train() statement parsing, reverse-mode autodiff C runtime gradient helpers (mse_loss_backward, sigmoid_backward, relu_backward, mat_transpose), and automated C training loop generation with SGD weight optimization.
+
+**Phase 3: Model Persistence & Generalized Computation Graph — IN PROGRESS**
+
+Planned features include model weights export/import (save_weights, load_weights), dynamic multi-layer computation graph tracing, and standard library expansion (Adam optimizer, Softmax).
 
 ## Contributing
 
