@@ -2,6 +2,7 @@
 
 pub mod backends;
 pub mod runtime;
+pub mod ir;
 
 pub use backends::cpu::CpuBackend;
 pub use backends::cuda::CudaBackend;
