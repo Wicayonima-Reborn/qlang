@@ -1,71 +1,12 @@
-#[derive(Debug, Clone)]
-pub enum TypeAnnotation {
-    Dec,
-    F64,
-    Vector(usize),
-    Matrix(usize, usize),
-}
+//! `ql_ast` - Abstract Syntax Tree & Type Representations for QLang.
 
-#[derive(Debug, Clone)]
-pub enum BinaryOp {
-    MatMul,     // @
-    Pipe,       // |>
-    ElementMul, // .*
-    ElementDiv, // ./
-    ElementAdd, // .+
-    ElementSub, // .-
-    Add,        // +
-    Sub,        // -
-    Mul,        // *
-    Div,        // /
-}
+pub mod ast;
+pub mod ops;
+pub mod types;
+pub mod visitor;
 
-#[derive(Debug, Clone)]
-pub enum Expr {
-    Number(f64),
-    Decimal(String),
-    Variable(String),
-    Vector(Vec<Expr>),
-    Matrix(Vec<Vec<Expr>>),
-    Slice {
-        target: Box<Expr>,
-        start: usize,
-        end: usize,
-    },
-    MatrixSlice {
-        target: Box<Expr>,
-        r_start: usize,
-        r_end: usize,
-        c_start: usize,
-        c_end: usize,
-    },
-    Binary {
-        op: BinaryOp,
-        left: Box<Expr>,
-        right: Box<Expr>,
-    },
-    Call {
-        callee: String,
-        args: Vec<Expr>,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum Statement {
-    Let {
-        name: String,
-        ty: Option<TypeAnnotation>,
-        value: Expr,
-    },
-    Expression(Expr),
-    Train {
-        loss_var: String,
-        lr: f64,
-        epochs: usize,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct Program {
-    pub statements: Vec<Statement>,
-}
+// Flatten public exports for ergonomic crate usage
+pub use ast::*;
+pub use ops::*;
+pub use types::*;
+pub use visitor::*;
