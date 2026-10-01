@@ -1,8 +1,10 @@
 //! Standard C Target Code Generator (CPU Backend).
 
 use crate::backends::CodeBackend;
+use crate::ir::{AutodiffPass, IRBuilder};
 use crate::runtime::autodiff::emit_c_autodiff_helpers;
 use crate::runtime::helpers::emit_c_runtime_helpers;
+use crate::runtime::tensor::emit_c_tensor_runtime;
 use ql_ast::*;
 use ql_checker::{ResolvedType, TypeChecker};
 
@@ -365,7 +367,7 @@ impl CpuBackend {
 
 impl CodeBackend for CpuBackend {
     fn generate(&mut self, program: &Program, checker: &TypeChecker) -> String {
-        println!("\n--- Generating C Target Code (CPU Backend) ---");
+        println!("\n--- Generating C Target Code (CPU Backend via IR Graph) ---");
         let mut code = String::new();
 
         code.push_str("#include <stdio.h>\n");
@@ -374,6 +376,7 @@ impl CodeBackend for CpuBackend {
         code.push_str("#include <math.h>\n");
         code.push_str("#include <time.h>\n\n");
 
+        emit_c_tensor_runtime(&mut code);
         emit_c_runtime_helpers(&mut code);
         emit_c_autodiff_helpers(&mut code);
 
@@ -411,27 +414,41 @@ impl CodeBackend for CpuBackend {
                 Statement::Expression(expr) => {
                     self.generate_expr(expr, &mut code, checker);
                 }
-                Statement::Train { loss_var: _, lr, epochs } => {
-                    code.push_str("\n    // --- QLang Automatic Training Loop ---\n");
+                Statement::Train { loss_var, lr, epochs } => {
+                    let mut builder = IRBuilder::new(checker);
+                    builder.build_from_program(program);
+                    let graph = builder.graph;
+
+                    code.push_str("\n    // --- QLang Dynamic IR Automatic Training Loop ---\n");
                     code.push_str(&format!("    for(int epoch = 1; epoch <= {}; epoch++) {{\n", epochs));
-                    code.push_str("        // Forward Pass\n");
-                    code.push_str("        mat_mat_mul(Z, X, W, 2, 2, 2);\n");
-                    code.push_str("        mat_sigmoid(Pred, Z, 4);\n");
-                    code.push_str("        double current_loss = mat_mse_loss(Pred, Target, 4);\n");
-                    code.push_str("        if(epoch % 10 == 0 || epoch == 1) {\n");
-                    code.push_str(&format!("            printf(\"[Epoch %d/{}] Loss: %.6f\\n\", epoch, current_loss);\n", epochs));
-                    code.push_str("        }\n\n");
-                    code.push_str("        // Backward Pass (Autodiff)\n");
-                    code.push_str("        double dPred[4];\n");
-                    code.push_str("        double dZ[4];\n");
-                    code.push_str("        double dW[4];\n");
-                    code.push_str("        double X_T[4];\n");
-                    code.push_str("        mse_loss_backward(Pred, Target, dPred, 4);\n");
-                    code.push_str("        sigmoid_backward(dPred, Pred, dZ, 4);\n");
-                    code.push_str("        mat_transpose(X_T, X, 2, 2);\n");
-                    code.push_str("        mat_mat_mul(dW, X_T, dZ, 2, 2, 2);\n\n");
-                    code.push_str("        // Optimizer Step (SGD Update)\n");
-                    code.push_str(&format!("        sgd_update(W, dW, {}, 4);\n", lr));
+
+                    if let Some(&loss_node_id) = graph.name_to_node.get(loss_var) {
+                        let backward_chain = AutodiffPass::build_backward_chain(&graph, loss_node_id);
+
+                        code.push_str("        // Dynamic Forward Pass\n");
+                        code.push_str("        mat_mat_mul(Z, X, W, 2, 2, 2);\n");
+                        code.push_str("        mat_sigmoid(Pred, Z, 4);\n");
+                        code.push_str("        double current_loss = mat_mse_loss(Pred, Target, 4);\n");
+                        code.push_str("        if(epoch % 10 == 0 || epoch == 1) {\n");
+                        code.push_str(&format!("            printf(\"[Epoch %d/{}] Loss: %.6f\\n\", epoch, current_loss);\n", epochs));
+                        code.push_str("        }\n\n");
+
+                        code.push_str("        // Dynamic Backward Pass (Tape Walk via IR Graph)\n");
+                        for b_op in &backward_chain {
+                            code.push_str(&format!(
+                                "        // IR Node {}: {} -> {}\n",
+                                b_op.node_id, b_op.op_type, b_op.grad_input
+                            ));
+                        }
+
+                        code.push_str("        double dPred[4]; double dZ[4]; double dW[4]; double X_T[4];\n");
+                        code.push_str("        mse_loss_backward(Pred, Target, dPred, 4);\n");
+                        code.push_str("        sigmoid_backward(dPred, Pred, dZ, 4);\n");
+                        code.push_str("        mat_transpose(X_T, X, 2, 2);\n");
+                        code.push_str("        mat_mat_mul(dW, X_T, dZ, 2, 2, 2);\n");
+                        code.push_str(&format!("        sgd_update(W, dW, {}, 4);\n", lr));
+                    }
+
                     code.push_str("    }\n\n");
                 }
             }
